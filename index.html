@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <title>Dominik Derkáč Vyhledáváč</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<h1>Vyhledávání</h1>
+
+<input type="text" id="query" placeholder="Zadej klíčové slovo">
+<button onclick="search()">Hledat</button>
+
+<pre id="result"></pre>
+
+<select id="format">
+  <option value="json">JSON</option>
+  <option value="csv">CSV</option>
+  <option value="xml">XML</option>
+  <option value="yaml">YAML</option>
+  <option value="xlsx">XLSX (Excel)</option>
+</select>
+
+<button onclick="download()">Stáhnout</button>
+
+<script>
+let lastData = [];
+
+async function search() {
+  const query = document.getElementById("query").value;
+
+  const res = await fetch(`http://localhost:3000/api/search?q=${encodeURIComponent(query)}`);
+  const data = await res.json();
+
+  lastData = data;
+
+  document.getElementById("result").textContent =
+    JSON.stringify(data, null, 2);
+}
+
+function download() {
+  const format = document.getElementById("format").value;
+
+  if (format === "json") downloadJSON();
+  if (format === "csv") downloadCSV();
+  if (format === "xml") downloadXML();
+  if (format === "yaml") downloadYAML();
+  if (format === "xlsx") downloadXLSX();
+}
+
+function downloadJSON() {
+  const blob = new Blob([JSON.stringify(lastData)], {type: "application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "results.json";
+  a.click();
+}
+
+function downloadCSV() {
+  const csv = lastData.map(r => `"${r.title}","${r.link}","${r.snippet}"`).join("\\n");
+  const blob = new Blob([csv], {type: "text/csv"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "results.csv";
+  a.click();
+}
+
+function escapeXML(str) {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function downloadXML() {
+  let xml = "<results>\n";
+
+  lastData.forEach(r => {
+    xml += `
+  <item>
+    <title>${escapeXML(r.title)}</title>
+    <link>${escapeXML(r.link)}</link>
+    <snippet>${escapeXML(r.snippet)}</snippet>
+  </item>`;
+  });
+
+  xml += "\n</results>";
+
+  saveFile(xml, "results.xml", "application/xml");
+}
+
+function downloadYAML() {
+  let yaml = "";
+
+  lastData.forEach(r => {
+    yaml += `- title: "${r.title}"\n`;
+    yaml += `  link: "${r.link}"\n`;
+    yaml += `  snippet: "${r.snippet}"\n`;
+  });
+
+  saveFile(yaml, "results.yaml", "text/yaml");
+}
+
+function downloadXLSX() {
+  const worksheet = XLSX.utils.json_to_sheet(lastData);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Results");
+
+  XLSX.writeFile(workbook, "results.xlsx");
+}
+
+function saveFile(content, filename, type) {
+  const blob = new Blob([content], { type });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+</script>
+
+</body>
+</html>
