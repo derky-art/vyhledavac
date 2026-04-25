@@ -30,7 +30,7 @@ let lastData = [];
 async function search() {
   const query = document.getElementById("query").value;
 
-  const res = await fetch(`http://localhost:3000/api/search?q=${encodeURIComponent(query)}`);
+  const res = await fetch(`https://vyhledavac.onrender.com/api/search?q=${encodeURIComponent(query)}`);
   const data = await res.json();
 
   lastData = data;
